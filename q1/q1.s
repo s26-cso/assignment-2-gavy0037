@@ -118,22 +118,22 @@ get:
     ret
 
 getAtMost:
-    # first argument is the root and second is the val(upper bound)
+    # first argument is the val(upper bound) and second is the root
 
     li t0,-1 # int ans = -1
     li t1,0
     loop:
-        beq a0,t1,exit
+        beq a1,t1,exit
 
-        lw t2,NODE_VAL(a0)
-        blt a1,t2,goLeft
+        lw t2,NODE_VAL(a1)
+        blt a0,t2,goLeft
 
         mv t0,t2 # ans = root->val
-        lw a0,NODE_RIGHT(a0)
+        lw a0,NODE_RIGHT(a1)
         j loop
 
         goLeft:
-        lw a0,NODE_LEFT(a0)
+        lw a0,NODE_LEFT(a1)
         j loop
     exit:
     mv a0,t0
