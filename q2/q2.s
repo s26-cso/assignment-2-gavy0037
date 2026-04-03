@@ -7,7 +7,7 @@ fmt_out: .asciz "%d "
 .global main
 
 main:
-    addi sp,sp,-64
+    addi sp,sp,-80
     sd s0,0(sp)
     sd s1,8(sp)
     sd s2,16(sp)
@@ -15,52 +15,73 @@ main:
     sd s4,32(sp)
     sd s5,40(sp)
     sd s6,48(sp)
-    sd ra,56(sp)
+    sd s7,56(sp)
+    sd ra,64(sp)
 
+    mv s0,a0          # s0 = argc - number of arguments
+    mv s1,a1          # s1 = argv - argumets , right now they are strings
 
-    mv s0,a0
-    mv s1,a1
-    # s2 will be the stack array and s3 will be the result array
-    slli a0,a0,3
-    call malloc
-    mv s2,a0
-
+    # allocate memory to integer array ( that will come from argv)
     mv a0,s0
     slli a0,a0,3
     call malloc
-    mv s3,a0
+    mv s7,a0          # s7 = int_arr
 
-    # current : s0 - n , s1 - base address of input array , s2 - base address of stack array , s3 - base address of result array
+    # memory allocate stack array (s2)
+    mv a0,s0
+    slli a0,a0,3
+    call malloc
+    mv s2,a0          # s2 = stack array
 
-    li s4,-1 # stack top pointer
-    addi s5,s0,-1 # iterator
+    # memory allocate result array (s3)
+    mv a0,s0
+    slli a0,a0,3
+    call malloc
+    mv s3,a0          # s3 = result array
+
+    # pre-convert all argv strings to integers and store in s7
+    li s5,1           # i = 1 as at 0 , the program name is saved
+    convert_loop:
+        beq s5,s0,convert_done
+        slli t1,s5,3
+        add t1,t1,s1
+        ld a0,0(t1) # a0 = argv[i]
+        call atoi   # a0 = integer value
+        slli t1,s5,3
+        add t1,t1,s7
+        sd a0,0(t1) # arr[i] = integer value
+        addi s5,s5,1
+        j convert_loop
+    convert_done:
+
+    # s0 = argc, s7 = int_arr, s2 = stack, s3 = result
+    li s4,-1           # stack top pointer
+    addi s5,s0,-1      # iterator = argc - 1
+
     nge_loop:
         li t2,1
-        blt s5, t2, exitNge
+        blt s5,t2,exitNge
 
+        # Load current value from arr[s5]
         slli t2,s5,3
-        add t2,t2,s1
-        ld a0,0(t2)
-        call atoi
-
-        mv s6,a0
+        add t2,t2,s7
+        ld s6,0(t2)        # s6 = int_arr[current_index]
 
         innerLoop:
             li t2,-1
             beq s4,t2,innerExit
 
+            # load stack top index
             slli t2,s4,3
             add t2,t2,s2
-            ld t2,0(t2)
+            ld t3,0(t2)        # t3 = stack top value (an argv index)
 
-            # t2 = st.top() i.e. the index, now get the arr[st.top()]
-            slli t2,t2,3
-            add t2,t2,s1
-            ld t2,0(t2)
+            # load arr[stack.top()] directly
+            slli t2,t3,3
+            add t2,t2,s7
+            ld t2,0(t2)        # arr[stack.top()]
 
-            mv a0,t2
-            call atoi
-            blt s6,a0,innerExit
+            blt s6,t2,innerExit   # if current < stack's top value, we found the next greater
 
             addi s4,s4,-1
             j innerLoop
@@ -69,6 +90,7 @@ main:
         li t2,-1
         beq s4,t2,emptyStack
 
+        # if stack is not empty: result[current] = stackTopIndex - 1 (convert to 0-indexed)
         slli t2,s5,3
         add t2,t2,s3
 
@@ -82,6 +104,7 @@ main:
         beq a0,a0,stackPush
         emptyStack:
 
+        # stack empty: result[current] = -1
         slli t2,s5,3
         add t2,t2,s3
 
@@ -123,9 +146,10 @@ main:
     ld s4,32(sp)
     ld s5,40(sp)
     ld s6,48(sp)
-    ld ra,56(sp)
-    addi sp,sp,64
+    ld s7,56(sp)
+    ld ra,64(sp)
+    addi sp,sp,80
 
-    li a0,0 #for successful exit code
+    li a0,0
 
     ret
