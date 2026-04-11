@@ -1,6 +1,7 @@
 .section .data 
 
 fmt_out: .asciz "%d "
+fmt_out_last: .asciz "%d\n"
 
 .section .text
 
@@ -145,7 +146,15 @@ main:
             slli t1,s1,3
             add t1,t1,s3          # t1 = &result[s1]
 
-            la a0,fmt_out
+            addi t2,s0,-1         # t2 = argc - 1
+            beq s1,t2,printLast
+            la a0,fmt_out         # not the last element, use "%d "
+            j doPrint
+
+            printLast:
+            la a0,fmt_out_last    # last element, use "%d\n"
+
+            doPrint:
             ld a1,0(t1)           # a1 = result[s1], the value to print
             call printf
 
