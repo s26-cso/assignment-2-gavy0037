@@ -59,29 +59,28 @@ main:
         j convert_loop
     convert_done:
 
-    # quick register map before the main algorithm:
-    # s0 = argc, s1 = (done with argv now), s2 = stack, s3 = result, s7 = arr
-    # s4 = stack top pointer (starts at -1 meaning empty)
-    # s5 = current index we're processing (goes from argc-1 down to 1)
-    # s6 = arr[s5], the actual integer value at current index
+    # s0 = argc, s1 = nothing , s2 = stack, s3 = result, s7 = arr
+    # s4 = stack top pointer (starts at -1 )
+    # s5 = current index we're processing (goes from argc-1 down to 1) for nge , we go in reverse direction
+    # s6 = arr[s5], will store actual integer value at current index
     li s4,-1           # stack is empty to start
     addi s5,s0,-1      # start from the last element and go right to left
 
     nge_loop:
         li t2,1
-        blt s5,t2,exitNge   # if s5 < 1 we've gone past the first real element, time to stop
+        blt s5,t2,exitNge   # if s5 < 1 loop is complete , time to exit the loop
 
-        # grab the value at current index so we can compare it against the stack
+        # find the current value at the indesx
         slli t2,s5,3
         add t2,t2,s7
         ld s6,0(t2)        # s6 = arr[s5]
 
         innerLoop:
-            # if the stack is empty there's nothing to pop, just bail
+            #if the stack is empty there's nothing to pop
             li t2,-1
             beq s4,t2,innerExit
 
-            # peek at the index sitting on top of the stack
+            # find the index on top of the stack
             slli t2,s4,3
             add t2,t2,s2
             ld t3,0(t2)        # t3 = stack.top() — this is an argv index (1-based)
@@ -92,10 +91,10 @@ main:
             ld t2,0(t2)        # t2 = arr[stack.top()]
 
             # we want to pop while arr[stack.top()] <= arr[i]
-            # so if arr[stack.top()] > arr[i], stop popping — we found the next greater for s5
+            # so if arr[stack.top()] > arr[i], stop the loop, we found the next greater for s5
             bgt t2,s6,innerExit
 
-            # arr[stack.top()] <= arr[i], so this stack entry is useless for s5, pop it
+            # arr[stack.top()] <= arr[i], so pop it out
             addi s4,s4,-1
             j innerLoop
         innerExit:
@@ -104,7 +103,7 @@ main:
         li t2,-1
         beq s4,t2,emptyStack   # stack is empty, no next greater element exists for s5
 
-        # stack isn't empty — the index on top is the next greater element's argv index
+        # now stack isn't empty — the index on top is the next greater element's argv index
         # argv indices are 1-based but we want 0-indexed output, so subtract 1
         slli t2,s5,3
         add t2,t2,s3           # t2 = &result[s5]
@@ -116,7 +115,7 @@ main:
         addi t4,t4,-1          # convert from 1-based argv index to 0-based position
         sd t4,0(t2)            # result[s5] = that 0-based position
 
-        j stackPush            # jump over the emptyStack block
+        j stackPush            # jump to the emptyStack block
 
         emptyStack:
         # no element to the right is greater, so result is -1
@@ -137,7 +136,7 @@ main:
 
     exitNge:
 
-    # done computing, now just print result[1] through result[argc-1] separated by spaces
+# now print the result
     printResult:
     li s1,1            # start printing from index 1 (index 0 is the unused program name slot)
         loop:
@@ -148,11 +147,11 @@ main:
 
             addi t2,s0,-1         # t2 = argc - 1
             beq s1,t2,printLast
-            la a0,fmt_out         # not the last element, use "%d "
+            la a0,fmt_out         # not the last element, so use space ...use "%d "
             j doPrint
 
             printLast:
-            la a0,fmt_out_last    # last element, use "%d\n"
+            la a0,fmt_out_last    # last element, using "%d\n"
 
             doPrint:
             ld a1,0(t1)           # a1 = result[s1], the value to print
@@ -174,5 +173,5 @@ main:
     ld ra,64(sp)
     addi sp,sp,80
 
-    li a0,0   # return 0, all good
+    li a0,0   # return 0
     ret
